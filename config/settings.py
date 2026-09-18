@@ -5,9 +5,10 @@ Uses pydantic-settings for type-safe configuration management.
 """
 
 import os
+import re
 from pathlib import Path
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 
 # Project root directory (two levels up from config/)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -25,9 +26,17 @@ class Settings(BaseSettings):
         default="", description="Databricks personal access token"
     )
     databricks_llm_endpoint: str = Field(
-        default="mbusa-openai-gpt-5-6-luna",
-        description="Databricks serving endpoint for chat LLM",
+        default="mbusa-claude-sonnet-4-6",
+        description="Databricks serving endpoint name for chat LLM",
     )
+
+    @field_validator("databricks_llm_endpoint", mode="after")
+    @classmethod
+    def _strip_endpoint_url(cls, v: str) -> str:
+        """Extract just the endpoint name if a full URL was provided."""
+        # Handles: https://.../serving-endpoints/<name>/invocations
+        match = re.search(r"/serving-endpoints/([^/]+)", v)
+        return match.group(1) if match else v.strip()
     embedding_model: str = Field(
         default="sentence-transformers/all-MiniLM-L6-v2",
         description="HuggingFace model name for local embeddings",
