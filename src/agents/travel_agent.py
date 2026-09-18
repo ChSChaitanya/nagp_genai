@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from langchain_openai import ChatOpenAI
+from langchain_databricks import ChatDatabricks
 from langchain_core.messages import (
     AIMessage,
     HumanMessage,
@@ -286,10 +286,11 @@ class TravelPlanningAgent:
 
         logger.info("Initializing Travel Planning Agent...")
 
-        # --- RAG Setup ---
+        # --- RAG Setup (Databricks Embeddings) ---
         self.vector_store = TravelVectorStore(
-            embedding_model=self.settings.openai_embedding_model,
-            openai_api_key=self.settings.openai_api_key,
+            embedding_endpoint=self.settings.databricks_embedding_endpoint,
+            databricks_host=self.settings.databricks_host,
+            databricks_token=self.settings.databricks_token,
             persist_path=self.settings.vector_store_abs_path,
         )
 
@@ -307,12 +308,10 @@ class TravelPlanningAgent:
             self.vector_store.build_index(chunks)
             logger.info("Vector index built with %d chunks.", len(chunks))
 
-        # --- LLM Setup ---
-        llm = ChatOpenAI(
-            model=self.settings.openai_model,
-            openai_api_key=self.settings.openai_api_key,
+        # --- LLM Setup (Databricks Model Serving) ---
+        llm = ChatDatabricks(
+            endpoint=self.settings.databricks_llm_endpoint,
             temperature=0.3,
-            streaming=True,
         )
 
         # --- Tools ---
