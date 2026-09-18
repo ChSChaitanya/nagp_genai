@@ -8,6 +8,8 @@ openai>=1.50.0
 
 # Embeddings & Vector Store
 faiss-cpu>=1.8.0
+langchain-huggingface>=0.1.0
+sentence-transformers>=3.0.0
 
 # MCP (Model Context Protocol)
 mcp>=1.0.0

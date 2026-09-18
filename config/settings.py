@@ -28,9 +28,9 @@ class Settings(BaseSettings):
         default="mbusa-openai-gpt-5-6-luna",
         description="Databricks serving endpoint for chat LLM",
     )
-    databricks_embedding_endpoint: str = Field(
-        default="databricks-bge-large-en",
-        description="Databricks serving endpoint for embeddings",
+    embedding_model: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        description="HuggingFace model name for local embeddings",
     )
 
     # --- MCP: Weather ---

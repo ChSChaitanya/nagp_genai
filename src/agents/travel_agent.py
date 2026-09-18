@@ -286,11 +286,9 @@ class TravelPlanningAgent:
 
         logger.info("Initializing Travel Planning Agent...")
 
-        # --- RAG Setup (Databricks Embeddings) ---
+        # --- RAG Setup (Local HuggingFace Embeddings) ---
         self.vector_store = TravelVectorStore(
-            embedding_endpoint=self.settings.databricks_embedding_endpoint,
-            databricks_host=self.settings.databricks_host,
-            databricks_token=self.settings.databricks_token,
+            embedding_model=self.settings.embedding_model,
             persist_path=self.settings.vector_store_abs_path,
         )
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from langchain_core.documents import Document
-from langchain_databricks import DatabricksEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
 logger = logging.getLogger(__name__)
@@ -20,21 +20,20 @@ class TravelVectorStore:
 
     def __init__(
         self,
-        embedding_endpoint: str = "databricks-bge-large-en",
-        databricks_host: str = "",
-        databricks_token: str = "",
+        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         persist_path: Optional[str | Path] = None,
     ):
         """Initialize the vector store manager.
 
         Args:
-            embedding_endpoint: Databricks serving endpoint for embeddings.
-            databricks_host: Databricks workspace URL.
-            databricks_token: Databricks personal access token.
+            embedding_model: HuggingFace model name for local embeddings.
             persist_path: Directory to save/load the FAISS index.
         """
-        self.embeddings = DatabricksEmbeddings(
-            endpoint=embedding_endpoint,
+        logger.info("Loading local embedding model: %s", embedding_model)
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name=embedding_model,
+            model_kwargs={"device": "cpu"},
+            encode_kwargs={"normalize_embeddings": True},
         )
         self.persist_path = Path(persist_path) if persist_path else None
         self._store: Optional[FAISS] = None
