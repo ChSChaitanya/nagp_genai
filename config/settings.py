@@ -26,7 +26,7 @@ class Settings(BaseSettings):
         default="", description="Databricks personal access token"
     )
     databricks_llm_endpoint: str = Field(
-        default="mbusa-claude-sonnet-4-6",
+        default="databricks-claude-sonnet-4-6",
         description="Databricks serving endpoint name for chat LLM",
     )
 
