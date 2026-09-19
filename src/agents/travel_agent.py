@@ -444,14 +444,33 @@ class TravelPlanningAgent:
         if not self._initialized:
             self.initialize()
 
-        # Retrieve RAG context
-        context, sources = self._retrieve_context(user_input)
-
-        # Build the augmented input
-        rag_context = RAG_CONTEXT_TEMPLATE.format(
-            context=context, sources=sources
+        # Only inject RAG context when the question needs destination
+        # knowledge.  Pure weather / currency queries skip retrieval
+        # so the agent returns a concise, tool-only answer.
+        lower_q = user_input.lower()
+        is_tool_only = any(
+            kw in lower_q
+            for kw in [
+                "weather", "temperature", "forecast", "rain",
+                "convert", "currency", "exchange rate", "how much is",
+            ]
+        ) and not any(
+            kw in lower_q
+            for kw in [
+                "itinerary", "plan", "recommend", "suggest",
+                "attraction", "visit", "where", "what to do",
+            ]
         )
-        augmented_input = f"{rag_context}\n\nUser Question: {user_input}"
+
+        if is_tool_only:
+            augmented_input = user_input
+            sources = ""
+        else:
+            context, sources = self._retrieve_context(user_input)
+            rag_context = RAG_CONTEXT_TEMPLATE.format(
+                context=context, sources=sources
+            )
+            augmented_input = f"{rag_context}\n\nUser Question: {user_input}"
 
         # Run the agent
         result = self.agent_executor.invoke({
