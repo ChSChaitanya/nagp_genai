@@ -2,7 +2,7 @@
 
 A context-aware AI travel assistant for **Singapore** that combines document-based destination knowledge (RAG) with real-time information from MCP tools (weather forecasts and currency conversion).
 
-Built with **LangChain**, **FAISS**, **Databricks Model Serving**, **MCP (Model Context Protocol)**, and **Streamlit**.
+Built with **LangChain**, **FAISS**, **Google Gemini / OpenAI**, **MCP (Model Context Protocol)**, and **Streamlit**.
 
 ---
 
@@ -10,8 +10,8 @@ Built with **LangChain**, **FAISS**, **Databricks Model Serving**, **MCP (Model 
 
 ```
 +-----------------+      +------------------+      +-------------------+
-|   Streamlit UI  | ---> | Travel Planning  | ---> | Databricks Model  |
-|   (app.py)      |      |   Agent          |      | Serving (LLM)     |
+|   Streamlit UI  | ---> | Travel Planning  | ---> | Google Gemini     |
+|   (app.py)      |      |   Agent          |      | or OpenAI (LLM)   |
 +-----------------+      +--------+---------+      +-------------------+
                                   |
                     +-------------+-------------+
@@ -120,7 +120,7 @@ Documents cover: major attractions, neighbourhoods, local transportation, cultur
    - Stage 2: `RecursiveCharacterTextSplitter` further splits oversized sections (default: 1000 chars, 200 overlap).
    - Each chunk retains original metadata plus section breadcrumbs.
 
-3. **Embedding & Indexing** (`vector_store.py`): Generates embeddings using OpenAI `text-embedding-3-small` and stores them in a FAISS vector index. The index is persisted to disk for fast reload.
+3. **Embedding & Indexing** (`vector_store.py`): Generates embeddings using a local HuggingFace model (`sentence-transformers/all-MiniLM-L6-v2`, downloaded on first run) and stores them in a FAISS vector index. The index is persisted to disk for fast reload.
 
 4. **Retrieval**: Top-K similarity search (default K=5) retrieves the most relevant chunks for each query. Retrieved chunks are formatted with source citations and injected into the LLM prompt.
 
@@ -165,12 +165,12 @@ The prompting approach uses a **layered architecture**:
 
 ### Prerequisites
 - Python 3.11+
-- Access to:
-  - Databricks workspace with a personal access token (required for LLM and embeddings)
-  - Model serving endpoint: `mbusa-openai-gpt-5-6-luna` (chat LLM)
-  - Model serving endpoint: `databricks-bge-large-en` (embeddings)
-  - [OpenWeatherMap](https://openweathermap.org/api) API key (free tier, for weather tools)
-  - [ExchangeRate API](https://www.exchangerate-api.com/) API key (free tier, for currency tools)
+- An API key for one of the supported LLM providers:
+  - [Google Gemini](https://aistudio.google.com/apikey) (default, free tier available)
+  - [OpenAI](https://platform.openai.com/api-keys) (alternative)
+- API keys for MCP tools:
+  - [OpenWeatherMap](https://openweathermap.org/api) (free tier, for weather tools)
+  - [ExchangeRate API](https://www.exchangerate-api.com/) (free tier, for currency tools)
 
 ### Installation
 
@@ -200,7 +200,7 @@ streamlit run app.py
 
 The app will open in your browser at `http://localhost:8501`.
 
-1. Enter your Databricks token and API keys in the sidebar (or configure in `.env`).
+1. Select your LLM provider (Gemini or OpenAI) and enter the API key in the sidebar (or configure in `.env`).
 2. Click **Initialize Agent** to build the vector index and load tools.
 3. Start asking questions!
 
@@ -211,8 +211,12 @@ The app will open in your browser at `http://localhost:8501`.
 pytest tests/ -v
 
 # Run with API keys for integration tests
-export DATABRICKS_HOST=https://adb-6192355565634015.15.azuredatabricks.net
-export DATABRICKS_TOKEN=your_token
+# For Gemini:
+export LLM_PROVIDER=gemini
+export GOOGLE_API_KEY=your_key
+# Or for OpenAI:
+# export LLM_PROVIDER=openai
+# export OPENAI_API_KEY=your_key
 export OPENWEATHER_API_KEY=your_key
 export EXCHANGERATE_API_KEY=your_key
 pytest tests/ -v
@@ -246,7 +250,7 @@ pytest tests/ -v
 ## Minimum Acceptance Criteria Checklist
 
 - [x] Knowledge base created from at least three travel resources
-- [x] Embedding-based semantic retrieval (FAISS + Databricks embeddings)
+- [x] Embedding-based semantic retrieval (FAISS + local HuggingFace embeddings)
 - [x] Grounded answers with source references
 - [x] Weather information through an MCP tool (OpenWeatherMap)
 - [x] Currency conversion through an MCP tool (ExchangeRate API)
@@ -262,8 +266,8 @@ pytest tests/ -v
 
 | Component | Technology |
 | --- | --- |
-| LLM | Databricks Model Serving (mbusa-openai-gpt-5-6-luna) |
-| Embeddings | Databricks Model Serving (databricks-bge-large-en) |
+| LLM | Google Gemini (gemini-2.0-flash) or OpenAI (gpt-4o-mini) |
+| Embeddings | Local HuggingFace (sentence-transformers/all-MiniLM-L6-v2) |
 | Vector Store | FAISS (faiss-cpu) |
 | Orchestration | LangChain |
 | MCP Framework | FastMCP (mcp package) |

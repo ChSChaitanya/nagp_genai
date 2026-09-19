@@ -66,11 +66,33 @@ with st.sidebar:
         "Keys entered here are not persisted."
     )
 
-    databricks_token = st.text_input(
-        "Databricks Token",
-        type="password",
-        help="Required for LLM and embeddings via Databricks Model Serving.",
+    import os
+
+    llm_provider = st.selectbox(
+        "LLM Provider",
+        ["gemini", "openai"],
+        index=0,
+        help="Choose Google Gemini or OpenAI as the chat model.",
     )
+    os.environ["LLM_PROVIDER"] = llm_provider
+
+    if llm_provider == "gemini":
+        llm_key = st.text_input(
+            "Google Gemini API Key",
+            type="password",
+            help="Get one at https://aistudio.google.com/apikey",
+        )
+        if llm_key:
+            os.environ["GOOGLE_API_KEY"] = llm_key
+    else:
+        llm_key = st.text_input(
+            "OpenAI API Key",
+            type="password",
+            help="Get one at https://platform.openai.com/api-keys",
+        )
+        if llm_key:
+            os.environ["OPENAI_API_KEY"] = llm_key
+
     weather_key = st.text_input(
         "OpenWeatherMap API Key",
         type="password",
@@ -82,11 +104,7 @@ with st.sidebar:
         help="Required for currency tools.",
     )
 
-    # Apply keys to environment if provided via UI
-    import os
-
-    if databricks_token:
-        os.environ["DATABRICKS_TOKEN"] = databricks_token
+    # Apply MCP keys to environment
     if weather_key:
         os.environ["OPENWEATHER_API_KEY"] = weather_key
     if currency_key:
@@ -98,8 +116,9 @@ with st.sidebar:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Initialize Agent", use_container_width=True):
-            if not os.environ.get("DATABRICKS_TOKEN"):
-                st.error("Please provide a Databricks token.")
+            key_var = "GOOGLE_API_KEY" if llm_provider == "gemini" else "OPENAI_API_KEY"
+            if not os.environ.get(key_var):
+                st.error(f"Please provide your {llm_provider.capitalize()} API key.")
             else:
                 with st.spinner("Initializing agent..."):
                     try:
@@ -149,7 +168,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption(
-        "Built with LangChain, FAISS, Databricks Model Serving, MCP, "
+        "Built with LangChain, FAISS, Google Gemini / OpenAI, MCP, "
         "and Streamlit. Destination: Singapore."
     )
 
@@ -170,7 +189,7 @@ if st.session_state.agent_initialized:
 else:
     st.info(
         "Click **Initialize Agent** in the sidebar to get started. "
-        "Make sure your Databricks token is configured.",
+        "Select your LLM provider and enter your API key.",
         icon="\u2139\ufe0f",
     )
 

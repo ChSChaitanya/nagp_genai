@@ -5,10 +5,9 @@ Uses pydantic-settings for type-safe configuration management.
 """
 
 import os
-import re
 from pathlib import Path
 from pydantic_settings import BaseSettings
-from pydantic import Field, field_validator
+from pydantic import Field
 
 # Project root directory (two levels up from config/)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -17,26 +16,31 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     """Application settings loaded from .env file and environment variables."""
 
-    # --- Databricks Model Serving ---
-    databricks_host: str = Field(
-        default="https://adb-6192355565634015.15.azuredatabricks.net",
-        description="Databricks workspace URL",
-    )
-    databricks_token: str = Field(
-        default="", description="Databricks personal access token"
-    )
-    databricks_llm_endpoint: str = Field(
-        default="databricks-claude-sonnet-4-6",
-        description="Databricks serving endpoint name for chat LLM",
+    # --- LLM Provider Selection ---
+    llm_provider: str = Field(
+        default="gemini",
+        description="LLM provider: 'gemini' or 'openai'",
     )
 
-    @field_validator("databricks_llm_endpoint", mode="after")
-    @classmethod
-    def _strip_endpoint_url(cls, v: str) -> str:
-        """Extract just the endpoint name if a full URL was provided."""
-        # Handles: https://.../serving-endpoints/<name>/invocations
-        match = re.search(r"/serving-endpoints/([^/]+)", v)
-        return match.group(1) if match else v.strip()
+    # --- Google Gemini ---
+    google_api_key: str = Field(
+        default="", description="Google Gemini API key"
+    )
+    gemini_model: str = Field(
+        default="gemini-2.0-flash",
+        description="Google Gemini model name",
+    )
+
+    # --- OpenAI ---
+    openai_api_key: str = Field(
+        default="", description="OpenAI API key"
+    )
+    openai_model: str = Field(
+        default="gpt-4o-mini",
+        description="OpenAI model name",
+    )
+
+    # --- Embeddings (local) ---
     embedding_model: str = Field(
         default="sentence-transformers/all-MiniLM-L6-v2",
         description="HuggingFace model name for local embeddings",

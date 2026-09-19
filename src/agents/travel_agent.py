@@ -10,7 +10,8 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from langchain_databricks import ChatDatabricks
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import (
     AIMessage,
     HumanMessage,
@@ -306,11 +307,22 @@ class TravelPlanningAgent:
             self.vector_store.build_index(chunks)
             logger.info("Vector index built with %d chunks.", len(chunks))
 
-        # --- LLM Setup (Databricks Model Serving) ---
-        llm = ChatDatabricks(
-            endpoint=self.settings.databricks_llm_endpoint,
-            temperature=0.3,
-        )
+        # --- LLM Setup (supports Gemini and OpenAI) ---
+        provider = self.settings.llm_provider.lower().strip()
+        if provider == "openai":
+            logger.info("Using OpenAI provider: %s", self.settings.openai_model)
+            llm = ChatOpenAI(
+                model=self.settings.openai_model,
+                openai_api_key=self.settings.openai_api_key,
+                temperature=0.3,
+            )
+        else:
+            logger.info("Using Gemini provider: %s", self.settings.gemini_model)
+            llm = ChatGoogleGenerativeAI(
+                model=self.settings.gemini_model,
+                google_api_key=self.settings.google_api_key,
+                temperature=0.3,
+            )
 
         # --- Tools ---
         tools = []
