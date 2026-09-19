@@ -306,25 +306,25 @@ class TravelPlanningAgent:
             logger.info("Vector index built with %d chunks.", len(chunks))
 
         # --- LLM Setup (supports Gemini and OpenAI) ---
+        # Both providers use ChatOpenAI: Gemini via Google's OpenAI-compatible
+        # endpoint, which avoids the native thought_signature requirement.
+        from langchain_openai import ChatOpenAI
+
         provider = self.settings.llm_provider.lower().strip()
         if provider == "openai":
-            from langchain_openai import ChatOpenAI
-
             logger.info("Using OpenAI provider: %s", self.settings.openai_model)
             llm = ChatOpenAI(
                 model=self.settings.openai_model,
-                openai_api_key=self.settings.openai_api_key,
+                api_key=self.settings.openai_api_key,
                 temperature=0.3,
             )
         else:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-
             logger.info("Using Gemini provider: %s", self.settings.gemini_model)
-            llm = ChatGoogleGenerativeAI(
+            llm = ChatOpenAI(
                 model=self.settings.gemini_model,
-                google_api_key=self.settings.google_api_key,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+                api_key=self.settings.google_api_key,
                 temperature=0.3,
-                thinking={"thinking_budget": 0},  # Disable thinking to avoid thought_signature issues with tool calling
             )
 
         # --- Tools ---
