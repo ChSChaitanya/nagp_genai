@@ -16,7 +16,7 @@ from langchain_core.messages import (
     SystemMessage,
 )
 from langchain_core.tools import tool
-from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain.agents import AgentExecutor, create_tool_calling_agent, create_structured_chat_agent
 from langchain_core.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
@@ -306,8 +306,6 @@ class TravelPlanningAgent:
             logger.info("Vector index built with %d chunks.", len(chunks))
 
         # --- LLM Setup (supports Gemini and OpenAI) ---
-        # Both providers use ChatOpenAI: Gemini via Google's OpenAI-compatible
-        # endpoint, which avoids the native thought_signature requirement.
         from langchain_openai import ChatOpenAI
 
         provider = self.settings.llm_provider.lower().strip()
@@ -319,13 +317,12 @@ class TravelPlanningAgent:
                 temperature=0.3,
             )
         else:
-            logger.info("Using Gemini provider: %s", self.settings.gemini_model)
+            logger.info("Using Gemini provider (via OpenAI-compat): %s", self.settings.gemini_model)
             llm = ChatOpenAI(
                 model=self.settings.gemini_model,
                 base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
                 api_key=self.settings.google_api_key,
                 temperature=0.3,
-                model_kwargs={"extra_body": {"thinking": {"thinking_budget": 0}}},
             )
 
         # --- Tools ---
@@ -333,20 +330,56 @@ class TravelPlanningAgent:
         tools.extend(_create_weather_tools())
         tools.extend(_create_currency_tools())
 
-        # --- Agent Prompt ---
+        # --- Agent Prompt & Agent ---
         system_prompt = SYSTEM_PROMPT.format(
             destination=self.settings.destination_city
         )
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "{input}"),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-        ])
+        if provider == "openai":
+            # OpenAI: native tool calling works perfectly
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", system_prompt),
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("human", "{input}"),
+                MessagesPlaceholder(variable_name="agent_scratchpad"),
+            ])
+            agent = create_tool_calling_agent(llm, tools, prompt)
+        else:
+            # Gemini: use structured chat agent (text-based JSON tool calls)
+            # to avoid Gemini's thought_signature requirement in native
+            # function calling.
+            structured_suffix = (
+                "\n\n## Available Tools\n\n{tools}\n\n"
+                "## Tool Invocation Format\n\n"
+                "To use a tool, respond with a markdown JSON code block "
+                "containing \"action\" (tool name) and \"action_input\" "
+                "(tool arguments).\n\n"
+                "Valid \"action\" values: \"Final Answer\" or {tool_names}\n\n"
+                "```json\n"
+                '{{\n  "action": "<tool_name>",\n'
+                '  "action_input": {{"arg1": "value1"}}\n'
+                "}}\n```\n\n"
+                "When you have the final answer:\n\n"
+                "```json\n"
+                '{{\n  "action": "Final Answer",\n'
+                '  "action_input": "<your complete response>"\n'
+                "}}\n```\n\n"
+                "Follow this loop:\n"
+                "Thought: reason about what to do\n"
+                "Action:\n```json\n<json blob>\n```\n"
+                "Observation: tool result\n"
+                "... (repeat until done)\n\n"
+                "ALWAYS respond with exactly one valid JSON blob per turn."
+            )
 
-        # --- Agent ---
-        agent = create_tool_calling_agent(llm, tools, prompt)
+            full_system = system_prompt + structured_suffix
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", full_system),
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("human", "{input}\n\n{agent_scratchpad}"),
+            ])
+            agent = create_structured_chat_agent(llm, tools, prompt)
+
         self.agent_executor = AgentExecutor(
             agent=agent,
             tools=tools,
