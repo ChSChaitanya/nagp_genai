@@ -10,8 +10,6 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import (
     AIMessage,
     HumanMessage,
@@ -310,6 +308,8 @@ class TravelPlanningAgent:
         # --- LLM Setup (supports Gemini and OpenAI) ---
         provider = self.settings.llm_provider.lower().strip()
         if provider == "openai":
+            from langchain_openai import ChatOpenAI
+
             logger.info("Using OpenAI provider: %s", self.settings.openai_model)
             llm = ChatOpenAI(
                 model=self.settings.openai_model,
@@ -317,6 +317,8 @@ class TravelPlanningAgent:
                 temperature=0.3,
             )
         else:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
             logger.info("Using Gemini provider: %s", self.settings.gemini_model)
             llm = ChatGoogleGenerativeAI(
                 model=self.settings.gemini_model,
