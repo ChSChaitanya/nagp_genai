@@ -324,6 +324,7 @@ class TravelPlanningAgent:
                 model=self.settings.gemini_model,
                 google_api_key=self.settings.google_api_key,
                 temperature=0.3,
+                thinking={"thinking_budget": 0},  # Disable thinking to avoid thought_signature issues with tool calling
             )
 
         # --- Tools ---

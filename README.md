@@ -266,7 +266,7 @@ pytest tests/ -v
 
 | Component | Technology |
 | --- | --- |
-| LLM | Google Gemini (gemini-2.0-flash) or OpenAI (gpt-4o-mini) |
+| LLM | Google Gemini (gemini-3.6-flash) or OpenAI (gpt-4o-mini) |
 | Embeddings | Local HuggingFace (sentence-transformers/all-MiniLM-L6-v2) |
 | Vector Store | FAISS (faiss-cpu) |
 | Orchestration | LangChain |
