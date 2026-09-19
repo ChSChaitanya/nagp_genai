@@ -325,6 +325,7 @@ class TravelPlanningAgent:
                 base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
                 api_key=self.settings.google_api_key,
                 temperature=0.3,
+                model_kwargs={"thinking": {"thinking_budget": 0}},
             )
 
         # --- Tools ---
