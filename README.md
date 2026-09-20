@@ -6,6 +6,32 @@ Built with **LangChain**, **FAISS**, **Google Gemini / OpenAI**, **MCP (Model Co
 
 ---
 
+## Quick Start (TL;DR)
+
+```bash
+# 1. Clone and enter the project
+git clone <repository-url>
+cd nagp_genai
+
+# 2. Create virtual environment and install
+python -m venv venv
+source venv/bin/activate      # Linux/macOS
+# venv\Scripts\activate        # Windows (CMD)
+# .\venv\Scripts\Activate.ps1  # Windows (PowerShell)
+pip install -r requirements.txt
+
+# 3. Configure API keys
+cp .env.example .env           # Linux/macOS  (Windows: copy .env.example .env)
+# Edit .env and fill in your keys (see "API Key Setup" section)
+
+# 4. Run
+streamlit run app.py
+```
+
+The app opens at **http://localhost:8501**. Select your LLM provider in the sidebar, enter your API key, click **Initialize Agent**, and start chatting.
+
+---
+
 ## Architecture Overview
 
 ```
@@ -40,6 +66,17 @@ Built with **LangChain**, **FAISS**, **Google Gemini / OpenAI**, **MCP (Model Co
 5. The LLM generates a grounded response with source attribution.
 6. The response is displayed with expandable source and tool-usage details.
 
+### LLM Provider Architecture
+
+The app supports two LLM providers, selectable via `LLM_PROVIDER` in `.env` or the sidebar dropdown:
+
+| Provider | How It Works | Agent Type |
+| --- | --- | --- |
+| **Google Gemini** (default) | Uses Google's OpenAI-compatible endpoint via `ChatOpenAI` | ReAct agent (text-based tool invocation) |
+| **OpenAI** | Direct OpenAI API via `ChatOpenAI` | Native tool-calling agent |
+
+Both providers use **local HuggingFace embeddings** (`sentence-transformers/all-MiniLM-L6-v2`) for RAG — no cloud embedding API is needed.
+
 ---
 
 ## Project Structure
@@ -48,9 +85,8 @@ Built with **LangChain**, **FAISS**, **Google Gemini / OpenAI**, **MCP (Model Co
 nagp_genai/
 ├── app.py                              # Streamlit UI entry point
 ├── requirements.txt                    # Python dependencies
-├── .env.example                        # Environment variable template
+├── .env                                # Environment variables (create from .env.example)
 ├── README.md                           # This file
-├── LICENSE
 ├── .gitignore
 │
 ├── config/
@@ -144,81 +180,127 @@ Both tools are also wrapped as LangChain `@tool` functions in the agent for seam
 
 ## Prompt and Context Strategy
 
-The prompting approach uses a **layered architecture**:
+1. **System Prompt**: Establishes the assistant persona (Singapore travel expert), defines grounding rules, source-attribution requirements, and response types (RAG-only, MCP-only, combined).
 
-1. **System Prompt**: Establishes the assistant persona (Singapore travel expert), defines grounding rules, source-attribution requirements, and the three response types (RAG-only, MCP-only, combined).
+2. **Smart RAG Injection**: Context is only retrieved and injected when the query needs destination knowledge. Pure weather/currency queries skip retrieval for concise, tool-only answers.
 
-2. **RAG Context Injection**: Retrieved knowledge-base chunks are inserted as a clearly delineated `KNOWLEDGE BASE CONTEXT` section with source citations. The model is instructed to use only this content for destination facts.
+3. **Tool Result Labeling**: Weather and currency outputs include explicit source labels (`[Source: OpenWeatherMap]`, `[Source: ExchangeRate API]`).
 
-3. **Tool Result Labeling**: Weather and currency tool outputs include explicit source labels (`[Source: OpenWeatherMap - Live Data]`, `[Source: ExchangeRate API - Live Data]`) so the model can distinguish real-time data from static content.
-
-4. **Honesty Guardrails**: The prompt explicitly instructs the model to:
-   - State when the knowledge base lacks information instead of fabricating
-   - Mark its own suggestions as `[AI Recommendation]`
-   - Preserve user preferences from the conversation context
+4. **Honesty Guardrails**: The model states when information is missing rather than fabricating, and marks its own suggestions as `[AI Recommendation]`.
 
 5. **Multi-turn Context**: Chat history is maintained via LangChain's `MessagesPlaceholder`, allowing the agent to reference previous messages and user preferences.
+
+---
+
+## API Key Setup
+
+You need **three free API keys**:
+
+| Key | Where to Get It | Sign-Up Steps |
+| --- | --- | --- |
+| **Google Gemini API Key** | https://aistudio.google.com/apikey | Sign in with Google → Click "Create API Key" → Copy |
+| **OpenWeatherMap API Key** | https://openweathermap.org/api | Sign up free → Go to "API keys" tab in profile → Copy |
+| **ExchangeRate API Key** | https://www.exchangerate-api.com/ | Sign up with email → Key shown on dashboard → Copy |
+
+> **Using OpenAI instead?** Get a key at https://platform.openai.com/api-keys and set `LLM_PROVIDER=openai` in `.env`.
+
+### Configuring `.env`
+
+Open `.env` and replace **only** the placeholder values:
+
+```dotenv
+# Choose your provider: 'gemini' (default) or 'openai'
+LLM_PROVIDER=gemini
+
+# Fill in ONE of these (based on LLM_PROVIDER)
+GOOGLE_API_KEY=<paste your Gemini key here>
+# OPENAI_API_KEY=<paste your OpenAI key here>   # uncomment if using OpenAI
+
+# Fill in BOTH of these (required for weather and currency tools)
+OPENWEATHER_API_KEY=<paste your OpenWeatherMap key here>
+EXCHANGERATE_API_KEY=<paste your ExchangeRate key here>
+```
+
+Leave all other values (model names, chunk sizes, paths) at their defaults.
 
 ---
 
 ## Setup Instructions
 
 ### Prerequisites
-- Python 3.11+
-- An API key for one of the supported LLM providers:
-  - [Google Gemini](https://aistudio.google.com/apikey) (default, free tier available)
-  - [OpenAI](https://platform.openai.com/api-keys) (alternative)
-- API keys for MCP tools:
-  - [OpenWeatherMap](https://openweathermap.org/api) (free tier, for weather tools)
-  - [ExchangeRate API](https://www.exchangerate-api.com/) (free tier, for currency tools)
 
-### Installation
+- **Python 3.11+** (verify: `python --version`)
+- **pip** (comes with Python)
+- Internet access (for API calls and first-run embedding model download)
+
+### Step-by-Step Installation
+
+#### 1. Clone the Repository
 
 ```bash
-# Clone the repository
 git clone <repository-url>
 cd nagp_genai
-
-# Create a virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env and add your API keys
 ```
 
-### Running the Application
+#### 2. Create a Virtual Environment
 
 ```bash
-# Start the Streamlit app
+# Linux / macOS
+python -m venv venv
+source venv/bin/activate
+
+# Windows (Command Prompt)
+python -m venv venv
+venv\Scripts\activate
+
+# Windows (PowerShell)
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+#### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+> **First-run note**: The embedding model (`sentence-transformers/all-MiniLM-L6-v2`, ~90 MB) downloads automatically when you initialize the agent. Subsequent runs load it from cache.
+
+#### 4. Configure Environment Variables
+
+```bash
+# Linux / macOS
+cp .env.example .env
+
+# Windows
+copy .env.example .env
+```
+
+Edit `.env` and fill in your API keys (see **API Key Setup** above).
+
+#### 5. Run the Application
+
+```bash
 streamlit run app.py
 ```
 
-The app will open in your browser at `http://localhost:8501`.
+The app opens in your browser at **http://localhost:8501**.
 
-1. Select your LLM provider (Gemini or OpenAI) and enter the API key in the sidebar (or configure in `.env`).
-2. Click **Initialize Agent** to build the vector index and load tools.
-3. Start asking questions!
+#### 6. Initialize and Use
+
+1. In the sidebar, select your **LLM Provider** (Gemini or OpenAI).
+2. Enter your LLM API key (if not already in `.env`).
+3. Optionally enter Weather and Currency API keys in the sidebar.
+4. Click **Initialize Agent** and wait for "Agent ready!".
+5. Start chatting!
 
 ### Running Tests
 
 ```bash
-# Run all tests (unit tests work without API keys)
+# Unit tests (no API keys required)
 pytest tests/ -v
 
-# Run with API keys for integration tests
-# For Gemini:
-export LLM_PROVIDER=gemini
-export GOOGLE_API_KEY=your_key
-# Or for OpenAI:
-# export LLM_PROVIDER=openai
-# export OPENAI_API_KEY=your_key
-export OPENWEATHER_API_KEY=your_key
-export EXCHANGERATE_API_KEY=your_key
+# Full integration tests (API keys must be set in .env or environment)
 pytest tests/ -v
 ```
 
@@ -247,6 +329,20 @@ pytest tests/ -v
 
 ---
 
+## Troubleshooting
+
+| Problem | Solution |
+| --- | --- |
+| `ModuleNotFoundError` | Run `pip install -r requirements.txt` inside your activated virtual environment |
+| `OPENWEATHER_API_KEY not configured` | Add your key to `.env` or enter it in the Streamlit sidebar |
+| Agent initialization slow on first run | The embedding model (~90 MB) is downloading; subsequent runs are instant |
+| `streamlit: command not found` | Activate your virtual environment first |
+| Empty responses or LLM errors | Verify your `GOOGLE_API_KEY` or `OPENAI_API_KEY` is valid and has quota |
+| `Connection refused` on weather/currency | Check internet connection and verify API keys are correct |
+| PowerShell blocks `Activate.ps1` | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` first |
+
+---
+
 ## Minimum Acceptance Criteria Checklist
 
 - [x] Knowledge base created from at least three travel resources
@@ -266,13 +362,14 @@ pytest tests/ -v
 
 | Component | Technology |
 | --- | --- |
-| LLM | Google Gemini (gemini-3.6-flash) or OpenAI (gpt-4o-mini) |
-| Embeddings | Local HuggingFace (sentence-transformers/all-MiniLM-L6-v2) |
-| Vector Store | FAISS (faiss-cpu) |
-| Orchestration | LangChain |
-| MCP Framework | FastMCP (mcp package) |
-| Weather API | OpenWeatherMap |
-| Currency API | ExchangeRate API |
+| LLM | Google Gemini (`gemini-3.6-flash`) or OpenAI (`gpt-4o-mini`) via `langchain-openai` |
+| LLM API | Google OpenAI-compatible endpoint (Gemini) / Direct OpenAI API |
+| Embeddings | Local HuggingFace (`sentence-transformers/all-MiniLM-L6-v2`) — no API key needed |
+| Vector Store | FAISS (`faiss-cpu`) |
+| Agent Framework | LangChain (`AgentExecutor` + `create_react_agent` / `create_tool_calling_agent`) |
+| MCP Framework | FastMCP (`mcp` package) |
+| Weather API | OpenWeatherMap (free tier) |
+| Currency API | ExchangeRate API (free tier) |
 | UI | Streamlit |
-| Configuration | pydantic-settings, python-dotenv |
-| Testing | pytest, pytest-asyncio |
+| Configuration | `pydantic-settings`, `python-dotenv` |
+| Testing | `pytest`, `pytest-asyncio` |
