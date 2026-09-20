@@ -16,7 +16,7 @@ from langchain_core.messages import (
     SystemMessage,
 )
 from langchain_core.tools import tool
-from langchain.agents import AgentExecutor, create_tool_calling_agent, create_structured_chat_agent
+from langchain.agents import AgentExecutor, create_tool_calling_agent, create_react_agent
 from langchain_core.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
@@ -347,40 +347,30 @@ class TravelPlanningAgent:
             ])
             agent = create_tool_calling_agent(llm, tools, prompt)
         else:
-            # Gemini: use structured chat agent (text-based JSON tool calls)
-            # to avoid Gemini's thought_signature requirement in native
-            # function calling.
-            structured_suffix = (
-                "\n\n## Available Tools\n\n{tools}\n\n"
-                "## Tool Invocation Format\n\n"
-                "To use a tool, respond with a markdown JSON code block "
-                "containing \"action\" (tool name) and \"action_input\" "
-                "(tool arguments).\n\n"
-                "Valid \"action\" values: \"Final Answer\" or {tool_names}\n\n"
-                "```json\n"
-                '{{\n  "action": "<tool_name>",\n'
-                '  "action_input": {{"arg1": "value1"}}\n'
-                "}}\n```\n\n"
-                "When you have the final answer:\n\n"
-                "```json\n"
-                '{{\n  "action": "Final Answer",\n'
-                '  "action_input": "<your complete response>"\n'
-                "}}\n```\n\n"
-                "Follow this loop:\n"
-                "Thought: reason about what to do\n"
-                "Action:\n```json\n<json blob>\n```\n"
-                "Observation: tool result\n"
-                "... (repeat until done)\n\n"
-                "ALWAYS respond with exactly one valid JSON blob per turn."
+            # Gemini: use ReAct agent (text-based tool calling) to avoid
+            # Gemini's thought_signature requirement AND JSON-wrapping
+            # truncation for long responses like itineraries.
+            react_suffix = (
+                "\n\nYou have access to the following tools:\n\n"
+                "{tools}\n\n"
+                "Use the following format:\n\n"
+                "Thought: reason about what to do next\n"
+                "Action: the tool to use, must be one of [{tool_names}]\n"
+                "Action Input: the input to the tool as a JSON object\n"
+                "Observation: the tool result\n"
+                "... (repeat Thought/Action/Action Input/Observation as needed)\n"
+                "Thought: I now know the final answer\n"
+                "Final Answer: the complete answer to the user's question\n\n"
+                "Begin!\n"
             )
 
-            full_system = system_prompt + structured_suffix
+            full_system = system_prompt + react_suffix
             prompt = ChatPromptTemplate.from_messages([
                 ("system", full_system),
                 MessagesPlaceholder(variable_name="chat_history"),
                 ("human", "{input}\n\n{agent_scratchpad}"),
             ])
-            agent = create_structured_chat_agent(llm, tools, prompt)
+            agent = create_react_agent(llm, tools, prompt)
 
         self.agent_executor = AgentExecutor(
             agent=agent,
