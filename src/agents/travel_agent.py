@@ -5,11 +5,13 @@ Supports multi-turn conversation with context retention.
 """
 
 import asyncio
+import json
 import logging
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
+from langchain_core.agents import AgentAction, AgentFinish
 from langchain_core.messages import (
     AIMessage,
     HumanMessage,
@@ -17,6 +19,7 @@ from langchain_core.messages import (
 )
 from langchain_core.tools import tool
 from langchain.agents import AgentExecutor, create_tool_calling_agent, create_react_agent
+from langchain.agents.output_parsers import ReActSingleInputOutputParser
 from langchain_core.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
@@ -29,6 +32,25 @@ from src.prompts.templates import SYSTEM_PROMPT, RAG_CONTEXT_TEMPLATE
 from config.settings import get_settings, PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
+
+
+class _ReActJsonParser(ReActSingleInputOutputParser):
+    """ReAct parser that interprets Action Input as JSON for multi-arg tools."""
+
+    def parse(self, text: str) -> Union[AgentAction, AgentFinish]:
+        result = super().parse(text)
+        if isinstance(result, AgentAction) and isinstance(result.tool_input, str):
+            try:
+                parsed = json.loads(result.tool_input.strip())
+                if isinstance(parsed, dict):
+                    return AgentAction(
+                        tool=result.tool,
+                        tool_input=parsed,
+                        log=result.log,
+                    )
+            except (json.JSONDecodeError, ValueError):
+                pass
+        return result
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +392,9 @@ class TravelPlanningAgent:
                 MessagesPlaceholder(variable_name="chat_history"),
                 ("human", "{input}\n\n{agent_scratchpad}"),
             ])
-            agent = create_react_agent(llm, tools, prompt)
+            agent = create_react_agent(
+                llm, tools, prompt, output_parser=_ReActJsonParser()
+            )
 
         self.agent_executor = AgentExecutor(
             agent=agent,
