@@ -315,6 +315,7 @@ class TravelPlanningAgent:
                 model=self.settings.openai_model,
                 api_key=self.settings.openai_api_key,
                 temperature=0.3,
+                max_tokens=8192,
             )
         else:
             logger.info("Using Gemini provider (via OpenAI-compat): %s", self.settings.gemini_model)
@@ -323,6 +324,7 @@ class TravelPlanningAgent:
                 base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
                 api_key=self.settings.google_api_key,
                 temperature=0.3,
+                max_tokens=8192,
             )
 
         # --- Tools ---
