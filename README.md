@@ -6,11 +6,11 @@ Built with **LangChain**, **FAISS**, **Google Gemini / OpenAI**, **MCP (Model Co
 
 ---
 
-## Quick Start (TL;DR)
+## Quick Start
 
 ```bash
 # 1. Clone and enter the project
-git clone <repository-url>
+git clone https://github.com/ChSChaitanya/nagp_genai
 cd nagp_genai
 
 # 2. Create virtual environment and install
@@ -268,14 +268,6 @@ pip install -r requirements.txt
 
 #### 4. Configure Environment Variables
 
-```bash
-# Linux / macOS
-cp .env.example .env
-
-# Windows
-copy .env.example .env
-```
-
 Edit `.env` and fill in your API keys (see **API Key Setup** above).
 
 #### 5. Run the Application
@@ -340,21 +332,6 @@ pytest tests/ -v
 | Empty responses or LLM errors | Verify your `GOOGLE_API_KEY` or `OPENAI_API_KEY` is valid and has quota |
 | `Connection refused` on weather/currency | Check internet connection and verify API keys are correct |
 | PowerShell blocks `Activate.ps1` | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` first |
-
----
-
-## Minimum Acceptance Criteria Checklist
-
-- [x] Knowledge base created from at least three travel resources
-- [x] Embedding-based semantic retrieval (FAISS + local HuggingFace embeddings)
-- [x] Grounded answers with source references
-- [x] Weather information through an MCP tool (OpenWeatherMap)
-- [x] Currency conversion through an MCP tool (ExchangeRate API)
-- [x] At least one response combining RAG and MCP
-- [x] Multi-turn conversation with retained context
-- [x] Appropriate tool selection based on user intent
-- [x] Clear handling of missing knowledge and tool failures
-- [x] A simple, usable interface (Streamlit)
 
 ---
 
